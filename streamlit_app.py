@@ -27,7 +27,7 @@ uploaded_files = st.file_uploader(
 if uploaded_files:
     results = []  # 결과 데이터를 저장할 리스트
 
-    for uploaded_file in uploaded_files:
+    for idx, uploaded_file in enumerate(uploaded_files):
         file_path = f"temp_{uploaded_file.name}"
         with open(file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
@@ -95,6 +95,7 @@ if uploaded_files:
 
         # 결과 저장
         results.append({
+            "No.": idx + 1,
             "Filename": uploaded_file.name,
             "Format": required_format if matches_format else f"Mismatch ({uploaded_file.name.split('.')[-1].upper()})",
             "Sample Rate": f"{properties['Sample Rate']} Hz",
@@ -103,7 +104,7 @@ if uploaded_files:
             "Stereo Status": stereo_status,
             "Noise Floor (dB)": noise_floor,
             "Duration (seconds)": properties["Duration (seconds)"],
-            "Matches Requirements": "Yes" if matches_all else "No",
+            "Matches Requirements": "O" if matches_all else "X",
         })
 
         # **미리 듣기**
@@ -123,6 +124,10 @@ if uploaded_files:
         time_axis = np.linspace(0, len(data) / samplerate, num=len(data))
         ax.plot(time_axis, data, color='royalblue', linewidth=0.7)
         ax.axhline(y=required_noise_floor, color='red', linestyle='--', label="Required Noise Floor")
+        
+        # 시간축을 5초 단위로 설정
+        ax.set_xticks(np.arange(0, max(time_axis), step=5))
+
         ax.set_title("Waveform with Noise Floor")
         ax.set_xlabel("Time (seconds)")
         ax.set_ylabel("Amplitude")
@@ -137,8 +142,13 @@ if uploaded_files:
     st.subheader("파일 검증 결과")
     df_results = pd.DataFrame(results)  # 결과를 DataFrame으로 변환
 
-    # 표를 가로 방향으로 표시하고 스크롤 없이 출력
-    st.table(df_results.style.format(precision=2))
+    # 표 스타일링: 일치 여부에 따라 행 색상 변경
+    def highlight_rows(row):
+        color = 'background-color: lightgreen;' if row["Matches Requirements"] == "O" else 'background-color: lightcoral;'
+        return [color] * len(row)
+
+    styled_df_results = df_results.style.apply(highlight_rows, axis=1).format(precision=2)
+    st.table(styled_df_results)
 
 else:
     st.info("파일을 업로드하면 결과가 표시됩니다.")
