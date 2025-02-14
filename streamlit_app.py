@@ -95,7 +95,6 @@ if uploaded_files:
 
         # 결과 저장
         results.append({
-            "No.": idx + 1,
             "Filename": uploaded_file.name,
             "Format": required_format if matches_format else f"Mismatch ({uploaded_file.name.split('.')[-1].upper()})",
             "Sample Rate": f"{properties['Sample Rate']} Hz",
@@ -107,6 +106,21 @@ if uploaded_files:
             "Matches Requirements": "O" if matches_all else "X",
         })
 
+    # **결과를 표 형태로 출력**
+    st.subheader("파일 검증 결과")
+    df_results = pd.DataFrame(results).reset_index(drop=True)  # 인덱스를 제거한 DataFrame 생성
+
+    # 표 스타일링: 일치 여부에 따라 행 색상 변경
+    def highlight_rows(row):
+        color = 'background-color: lightgreen;' if row["Matches Requirements"] == "O" else 'background-color: lightcoral;'
+        return [color] * len(row)
+
+    styled_df_results = df_results.style.apply(highlight_rows, axis=1).format(precision=2)
+    st.table(styled_df_results)
+
+    for idx, uploaded_file in enumerate(uploaded_files):
+        file_path = f"temp_{uploaded_file.name}"
+        
         # **미리 듣기**
         st.subheader(f"미리 듣기: {uploaded_file.name}")
         st.audio(uploaded_file)
@@ -133,22 +147,6 @@ if uploaded_files:
         ax.set_ylabel("Amplitude")
         ax.legend()
         st.pyplot(fig)
-
-        # 임시 파일 삭제
-        import os
-        os.remove(file_path)
-
-    # **결과를 표 형태로 출력**
-    st.subheader("파일 검증 결과")
-    df_results = pd.DataFrame(results)  # 결과를 DataFrame으로 변환
-
-    # 표 스타일링: 일치 여부에 따라 행 색상 변경
-    def highlight_rows(row):
-        color = 'background-color: lightgreen;' if row["Matches Requirements"] == "O" else 'background-color: lightcoral;'
-        return [color] * len(row)
-
-    styled_df_results = df_results.style.apply(highlight_rows, axis=1).format(precision=2)
-    st.table(styled_df_results)
 
 else:
     st.info("파일을 업로드하면 결과가 표시됩니다.")
