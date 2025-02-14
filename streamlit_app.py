@@ -93,26 +93,26 @@ if uploaded_files:
             ]
         )
 
-        # 결과 저장
+        # 결과 저장 (열 이름 변경 반영)
         results.append({
-            "Filename": uploaded_file.name,
+            "Name": uploaded_file.name,
             "Format": required_format if matches_format else f"Mismatch ({uploaded_file.name.split('.')[-1].upper()})",
             "Sample Rate": f"{properties['Sample Rate']} Hz",
             "Bit Depth": properties["Bit Depth"],
-            "Channels": properties["Channels"],
-            "Stereo Status": stereo_status,
+            "Channel(1)": properties["Channels"],
+            "Channel(2)": stereo_status,
             "Noise Floor (dB)": noise_floor,
-            "Duration (seconds)": properties["Duration (seconds)"],
-            "Matches Requirements": "O" if matches_all else "X",
+            "Time (sec)": properties["Duration (seconds)"],
+            "Valid": "O" if matches_all else "X",
         })
 
     # **결과를 표 형태로 출력**
     st.subheader("파일 검증 결과")
     df_results = pd.DataFrame(results).reset_index(drop=True)  # 인덱스를 제거한 DataFrame 생성
 
-    # 표 스타일링: 일치 여부에 따라 행 색상 변경
+    # 표 스타일링: 일치 여부에 따라 행 색상 변경 (열 이름 변경 반영)
     def highlight_rows(row):
-        color = 'background-color: lightgreen;' if row["Matches Requirements"] == "O" else 'background-color: lightcoral;'
+        color = 'background-color: lightgreen;' if row["Valid"] == "O" else 'background-color: lightcoral;'
         return [color] * len(row)
 
     styled_df_results = df_results.style.apply(highlight_rows, axis=1).format(precision=2)
