@@ -6,10 +6,23 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 st.title("Audio Requirements Validator")
-st.write("업로드된 오디오 파일의 속성을 검증하고, 노이즈 및 음파를 시각화하는 시스템입니다.")
+st.write("업로드된 오디오 파일의 속성을 검증하고, 요구사항과 비교하여 결과를 제공합니다.")
+
+# **파일 요구사항 선택**
+st.sidebar.header("파일 요구사항 설정")
+required_format = st.sidebar.selectbox("Format", ["WAV", "MP3", "AAC"])
+required_channels = st.sidebar.selectbox("Channels", [1, 2])
+required_sample_rate = st.sidebar.selectbox("Sample Rate (kHz)", [44.1, 48, 96, 192]) * 1000
+required_bit_depth = st.sidebar.selectbox("Bit Depth", [16, 24, 32])
+required_noise_floor = st.sidebar.slider("Noise Floor (dB)", min_value=-100, max_value=0, value=-60)
+required_stereo_status = st.sidebar.selectbox(
+    "Stereo Status", ["Dual Mono", "Mono", "True Stereo", "Joint Stereo"]
+)
 
 # 여러 파일 업로드 위젯
-uploaded_files = st.file_uploader("오디오 파일을 업로드하세요 (WAV 형식, 여러 개 가능)", type=["wav"], accept_multiple_files=True)
+uploaded_files = st.file_uploader(
+    "오디오 파일을 업로드하세요 (WAV 형식 등 여러 개 가능)", type=["wav", "mp3", "aac"], accept_multiple_files=True
+)
 
 if uploaded_files:
     results = []  # 결과 데이터를 저장할 리스트
@@ -61,13 +74,41 @@ if uploaded_files:
         noise_floor = calculate_noise_floor(file_path)
         stereo_status = check_stereo_status(file_path)
 
+        # 요구사항과 비교
+        matches_format = uploaded_file.name.lower().endswith(required_format.lower())
+        matches_channels = properties["Channels"] == required_channels
+        matches_sample_rate = properties["Sample Rate"] == required_sample_rate
+        matches_bit_depth = properties["Bit Depth"] == required_bit_depth
+        matches_noise_floor = noise_floor >= required_noise_floor
+        matches_stereo_status = stereo_status == required_stereo_status
+
+        matches_all = all(
+            [
+                matches_format,
+                matches_channels,
+                matches_sample_rate,
+                matches_bit_depth,
+                matches_noise_floor,
+                matches_stereo_status,
+            ]
+        )
+
         # 결과 저장
         results.append({
-            "File Name": uploaded_file.name,
-            **properties,
-            "Noise Floor (dB)": noise_floor,
+            "Filename": uploaded_file.name,
+            "Format": required_format if matches_format else f"Mismatch ({uploaded_file.name.split('.')[-1].upper()})",
+            "Sample Rate": f"{properties['Sample Rate']} Hz",
+            "Bit Depth": properties["Bit Depth"],
+            "Channels": properties["Channels"],
             "Stereo Status": stereo_status,
+            "Noise Floor (dB)": noise_floor,
+            "Duration (seconds)": properties["Duration (seconds)"],
+            "Matches Requirements": "Yes" if matches_all else "No",
         })
+
+        # **미리 듣기**
+        st.subheader(f"미리 듣기: {uploaded_file.name}")
+        st.audio(uploaded_file)
 
         # **노이즈 음파 시각화**
         st.subheader(f"음파 및 노이즈 시각화: {uploaded_file.name}")
@@ -81,7 +122,7 @@ if uploaded_files:
         fig, ax = plt.subplots(figsize=(10, 4))
         time_axis = np.linspace(0, len(data) / samplerate, num=len(data))
         ax.plot(time_axis, data, color='royalblue', linewidth=0.7)
-        ax.axhline(y=noise_floor, color='red', linestyle='--', label="Noise Floor")
+        ax.axhline(y=required_noise_floor, color='red', linestyle='--', label="Required Noise Floor")
         ax.set_title("Waveform with Noise Floor")
         ax.set_xlabel("Time (seconds)")
         ax.set_ylabel("Amplitude")
@@ -95,7 +136,9 @@ if uploaded_files:
     # **결과를 표 형태로 출력**
     st.subheader("파일 검증 결과")
     df_results = pd.DataFrame(results)  # 결과를 DataFrame으로 변환
-    st.dataframe(df_results.style.format(precision=2), use_container_width=True)  # 표 출력
+
+    # 표를 가로 방향으로 표시하고 스크롤 없이 출력
+    st.table(df_results.style.format(precision=2))
 
 else:
     st.info("파일을 업로드하면 결과가 표시됩니다.")
